@@ -8,11 +8,17 @@ import subprocess
 import tempfile
 
 p = argparse.ArgumentParser()
-p.add_argument("--sdk", type=Path, default=Path(__file__).resolve().parents[3])
+p.add_argument("--sdk", type=Path, default=Path(os.environ.get("SPUTNIK_ROOT", Path(__file__).resolve().parents[3])))
 p.add_argument("--native", action="store_true")
 a = p.parse_args()
 sdk = a.sdk.resolve()
 package = Path(__file__).resolve().parents[1]
+def native_input(value):
+    if value.startswith("/"): return value
+    if value == "../..": return str(sdk)
+    if value.startswith("../../"): return str((sdk / value[6:]).resolve())
+    return str((package / value).resolve())
+
 work = Path(tempfile.mkdtemp(prefix="system-io-", dir=sdk / "build"))
 root = work / "root"
 outside = work / "outside"
@@ -34,7 +40,7 @@ for module in manifest["modules"]:
     module["path"] = str(package / module["path"])
 for extension in manifest["native_extensions"]:
     for key in ["sources", "include_dirs", "library_dirs"]:
-        extension[key] = [str((package / value).resolve()) if not value.startswith("/") else value for value in extension[key]]
+        extension[key] = [native_input(value) for value in extension[key]]
 build = work / "test.build.json"
 build.write_text(json.dumps(manifest))
 env = dict(os.environ, SYSTEM_IO_SELFTEST="working")
