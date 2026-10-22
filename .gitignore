@@ -1,0 +1,4 @@
+build/
+.sputnik/
+__pycache__/
+*.sputnikpkg
